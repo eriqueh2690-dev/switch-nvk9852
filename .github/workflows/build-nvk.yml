@@ -56,16 +56,15 @@ jobs:
           export BUILD=/work/mb
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           ninja -C /work/mb || true
+          echo "=== CRIANDO SUPER ARQUIVO FAT ==="
+          find /work/mb -name "*.o" | while read -r obj; do if aarch64-none-elf-objdump -f "$obj" 2>/dev/null | grep -q "aarch64"; then echo "$obj"; fi; done | xargs aarch64-none-elf-ar rcs /work/mb/libvulkan_nouveau_fat.a
         '
     - name: Prepare Artifacts
       run: |
         mkdir -p output_libs
-        find mb/src -name "*.a" -exec cp {} output_libs/ \;
-        find mb/src/nouveau/vulkan -name "*.o" -exec cp {} output_libs/ \;
+        cp mb/libvulkan_nouveau_fat.a output_libs/
     - name: Upload NVK Static Libraries
       uses: actions/upload-artifact@v4
       with:
         name: switch-nvk-libs
-        path: |
-          output_libs/*.a
-          output_libs/*.o
+        path: output_libs/libvulkan_nouveau_fat.a

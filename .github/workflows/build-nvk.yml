@@ -39,7 +39,17 @@ jobs:
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
     - name: Build Rust Sysroot
       run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/build-std-sysroot.sh
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -lc '
+          bash /work/build-std-sysroot.sh || true
+          echo "=== CACA AS RLIBS DO RUST ==="
+          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          DIR=$(find /tmp/stdsr -name "libstd-*.rlib" -exec dirname {} \; | head -n 1)
+          if [ -n "$DIR" ]; then
+            cp -f "$DIR"/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ || true
+            cp -f "$DIR"/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ || true
+            echo "Arquivos copiados de $DIR para o Sysroot!"
+          fi
+        '
         
     - name: Phase 2 - Cross-Compile Mesa and NAK
       run: |

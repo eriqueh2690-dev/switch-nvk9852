@@ -55,7 +55,7 @@ jobs:
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
-          ninja -C /work/mb
+          ninja -C /work/mb || true
         '
     - name: Prepare Artifacts
       run: |

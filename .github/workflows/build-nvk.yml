@@ -47,7 +47,7 @@ jobs:
           export NATIVE_PREFIX=/work/native-prefix
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
-          bash /work/configure-mesa.sh
+          bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           ninja -C /work/mb
         '
     - name: Prepare Artifacts
@@ -59,4 +59,3 @@ jobs:
       with:
         name: switch-nvk-libs
         path: output_libs/*.a
-

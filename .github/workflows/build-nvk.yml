@@ -16,22 +16,33 @@ jobs:
         tar xf mesa-25.0.7.tar.xz
         mv mesa-25.0.7 mesa-25
         
+    - name: Fix Execute Permissions
+      run: |
+        find . -name "*.sh" -exec chmod +x {} \;
+        
     - name: Build Docker Image
       run: |
         docker build -t switch-nvk-build .
         
-    - name: Apply Switch Patches
-      run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/apply-patches.sh
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
-        
-    - name: Cross-Compile Mesa and NAK
+    - name: Phase 1 - Build Native Tools (Unpatched)
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work/mesa-25 switch-nvk-build bash -lc '
           export NATIVE_PREFIX=/work/native-prefix
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
           bash /work/build-native-tools.sh
+        '
+    - name: Apply Switch Patches
+      run: |
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/apply-patches.sh
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
+        
+    - name: Phase 2 - Cross-Compile Mesa and NAK
+      run: |
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work/mesa-25 switch-nvk-build bash -lc '
+          export NATIVE_PREFIX=/work/native-prefix
+          export PATH=/work/native-prefix/bin:$PATH
+          export BUILD=/work/mb
           bash /work/configure-mesa.sh
           ninja -C /work/mb
         '
@@ -44,3 +55,4 @@ jobs:
       with:
         name: switch-nvk-libs
         path: output_libs/*.a
+

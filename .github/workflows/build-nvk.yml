@@ -16,8 +16,9 @@ jobs:
         tar xf mesa-25.0.7.tar.xz
         mv mesa-25.0.7 mesa-25
         
-    - name: Fix Execute Permissions
+    - name: Fix Execute Permissions and Line Endings
       run: |
+        find . -name "*.sh" -exec sed -i 's/\r$//' {} +
         find . -name "*.sh" -exec chmod +x {} \;
         
     - name: Build Docker Image
@@ -58,3 +59,4 @@ jobs:
       with:
         name: switch-nvk-libs
         path: output_libs/*.a
+

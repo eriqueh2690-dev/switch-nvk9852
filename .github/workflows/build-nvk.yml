@@ -36,6 +36,9 @@ jobs:
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/apply-patches.sh
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
+    - name: Build Rust Sysroot
+      run: |
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/build-std-sysroot.sh
         
     - name: Phase 2 - Cross-Compile Mesa and NAK
       run: |
@@ -55,4 +58,3 @@ jobs:
       with:
         name: switch-nvk-libs
         path: output_libs/*.a
-

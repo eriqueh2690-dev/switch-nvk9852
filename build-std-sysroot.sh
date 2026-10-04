@@ -12,7 +12,7 @@ RUSTC_SYSROOT="$(rustc --print sysroot)"
 rm -rf /tmp/stdsr && mkdir -p /tmp/stdsr/src && cd /tmp/stdsr
 printf '#![no_main]\n' > src/lib.rs
 printf '[package]\nname="stdsr"\nversion="0.0.0"\nedition="2021"\n[lib]\ncrate-type=["rlib"]\n[profile.release]\npanic="abort"\n' > Cargo.toml
-cargo +nightly build --release -Zbuild-std=core,alloc,std,panic_abort --target "$TGT"
+cargo +nightly-2024-08-01 build --release -Zbuild-std=core,alloc,std,panic_abort --target "$TGT"
 
 # 2. Assemble a sysroot: copy host sysroot structure for the target, then overlay our built std rlibs.
 DEPS=/tmp/stdsr/target/$TGT/release/deps

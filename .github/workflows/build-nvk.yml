@@ -57,7 +57,7 @@ jobs:
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           ninja -C /work/mb || true
           echo "=== CRIANDO SUPER ARQUIVO FAT ==="
-          find /work/mb -name "*.o" | while read -r obj; do if aarch64-none-elf-objdump -f "$obj" 2>/dev/null | grep -q "aarch64"; then echo "$obj"; fi; done | xargs aarch64-none-elf-ar rcs /work/mb/libvulkan_nouveau_fat.a
+          find /work/mb -name "*.o" | while read -r obj; do if /opt/devkitpro/devkitA64/bin/aarch64-none-elf-objdump -f "$obj" 2>/dev/null | grep -q "aarch64"; then echo "$obj"; fi; done | xargs /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs /work/mb/libvulkan_nouveau_fat.a
         '
     - name: Prepare Artifacts
       run: |

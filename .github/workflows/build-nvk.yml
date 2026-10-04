@@ -41,14 +41,11 @@ jobs:
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -lc '
           bash /work/build-std-sysroot.sh || true
-          echo "=== CACA AS RLIBS DO RUST ==="
+          echo "=== FORCANDO TODAS AS BIBLIOTECAS (CORE, ALLOC, STD) ==="
           mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
-          DIR=$(find /tmp/stdsr -name "libstd-*.rlib" -exec dirname {} \; | head -n 1)
-          if [ -n "$DIR" ]; then
-            cp -f "$DIR"/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ || true
-            cp -f "$DIR"/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ || true
-            echo "Arquivos copiados de $DIR para o Sysroot!"
-          fi
+          find /tmp/stdsr -name "*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
+          find /tmp/stdsr -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
+          echo "Biliotecas extraídas e prontas."
         '
         
     - name: Phase 2 - Cross-Compile Mesa and NAK

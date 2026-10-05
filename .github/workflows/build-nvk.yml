@@ -47,14 +47,14 @@ jobs:
           cp -f $(find /tmp/stdsr -name "libstd-*.rmeta" -exec dirname {} \; | head -n 1)/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
         '
         
-     - name: Phase 2 - Cross-Compile Mesa and NAK
+    - name: Phase 2 - Cross-Compile Mesa and NAK
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work/mesa-25 switch-nvk-build bash -lc '
           export NATIVE_PREFIX=/work/native-prefix
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
           
-          # O pulo do gato: injetamos a permissão no arquivo fonte ANTES do Meson/Ninja começarem!
+          # Injetamos a permissao no arquivo fonte ANTES do Meson/Ninja comecarem!
           sed -i "1i #![allow(unstable_features)]" /work/mesa-25/src/compiler/rust/lib.rs
           sed -i "1i #![feature(unsafe_extern_blocks)]" /work/mesa-25/src/compiler/rust/lib.rs
           
@@ -71,10 +71,10 @@ jobs:
             (cd "$ARCHIVE_DIR" && aarch64-none-elf-ar -t "$ARCHIVE_NAME" | xargs aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME")
           done
         '
-
     - name: Upload NVK Static Libraries
       uses: actions/upload-artifact@v4
       with:
         name: switch-nvk-libs
         path: |
           output_libs/*.a
+

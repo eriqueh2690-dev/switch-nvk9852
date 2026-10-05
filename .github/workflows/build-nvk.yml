@@ -41,8 +41,8 @@ jobs:
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -lc '
           bash /work/build-std-sysroot.sh || true
-          echo "=== PROCURANDO ONDE O CARGO COLOCOU AS RLIBS ==="
-          find /tmp/stdsr -name "*.rlib" || true
+          echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
+          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
           cp -f $(find /tmp/stdsr -name "libstd-*.rlib" -exec dirname {} \; | head -n 1)/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
           cp -f $(find /tmp/stdsr -name "libstd-*.rmeta" -exec dirname {} \; | head -n 1)/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
         '
@@ -53,6 +53,13 @@ jobs:
           export NATIVE_PREFIX=/work/native-prefix
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
+          
+          # Restaura o sysroot salvo na Fase 1 para dentro do compilador global (rustup)
+          echo "=== RESTAURANDO SYSROOT DO SWITCH PARA O RUSTC ==="
+          RUSTLIB_DIR=$(rustc --print sysroot)/lib/rustlib
+          mkdir -p $RUSTLIB_DIR/aarch64-switch-horizon/lib
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           

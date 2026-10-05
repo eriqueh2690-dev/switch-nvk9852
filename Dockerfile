@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM devkitpro/devkita64:latest
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -36,17 +36,11 @@ RUN apt-get update && apt-get install -y \
     lldb \
     wget \
     sudo
-RUN pip3 install meson mako
-# Aqui está a correção oficial: Usar o instalador do devkitPro em vez de baixar o deb fixo
-RUN wget https://apt.devkitpro.org/install-devkitpro-pacman \
-    && chmod +x ./install-devkitpro-pacman \
-    && ./install-devkitpro-pacman \
-    && rm ./install-devkitpro-pacman \
-    && dkp-pacman -Sy --noconfirm switch-dev switch-mesa switch-libdrm
-ENV DEVKITPRO=/opt/devkitpro
-ENV DEVKITARM=/opt/devkitpro/devkitARM
-ENV DEVKITA64=/opt/devkitpro/devkitA64
-ENV PATH=$DEVKITPRO/tools/bin:$DEVKITPRO/portlibs/switch/bin:$DEVKITA64/bin:$PATH
+# As versões mais novas de Python no Debian/Ubuntu do devkitpro exigem flag extra no pip
+RUN pip3 install meson mako --break-system-packages || pip3 install meson mako
+# O devkitpro/devkita64 JÁ VEM com switch-dev. Só pedimos o mesa e libdrm.
+# Como é uma requisição pequena e em imagem oficial, eles não bloqueiam o IP.
+RUN dkp-pacman -Sy --noconfirm switch-mesa switch-libdrm
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2026-09-15
 ENV PATH=/root/.cargo/bin:$PATH
 RUN rustup component add rust-src --toolchain nightly-2026-09-15

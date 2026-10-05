@@ -53,5 +53,5 @@ meson setup "$BUILD" --native-file "$CROSSDIR/native.txt" --cross-file "$CROSSDI
   --buildtype=plain --default-library=static \
   -Dvulkan-drivers=nouveau -Dgallium-drivers='' -Dopengl=false -Dgles1=disabled -Dgles2=disabled \
   -Degl=disabled -Dglx=disabled -Dplatforms='' -Dvideo-codecs='' -Dllvm=disabled \
-  -Dshared-glapi=disabled -Dgbm=disabled -Dzstd=disabled -Dzlib=disabled -Dmesa-clc=system -Dprecomp-compiler=system \
+  -Dshared-glapi=disabled -Dgbm=disabled -Dzstd=disabled -Dzlib=enabled -Dmesa-clc=system -Dprecomp-compiler=system \
   "$@"

@@ -33,13 +33,15 @@ RUN apt-get update && apt-get install -y \
     clang-15 \
     llvm-15 \
     llvm-15-dev \
+    libclang-15-dev \
     lld-15 \
     wget \
     sudo \
     glslang-tools \
     spirv-tools \
     libudev-dev \
-    libllvmspirvlib-15-dev
+    libllvmspirvlib-15-dev \
+    libvulkan-dev
 # Força o sistema a usar o LLVM/Clang 15 recém instalado
 RUN ln -sf /usr/bin/clang-15 /usr/bin/clang && \
     ln -sf /usr/bin/clang++-15 /usr/bin/clang++ && \

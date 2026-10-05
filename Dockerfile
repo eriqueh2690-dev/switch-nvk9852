@@ -38,7 +38,8 @@ RUN apt-get update && apt-get install -y \
     sudo \
     glslang-tools \
     spirv-tools \
-    libudev-dev
+    libudev-dev \
+    libllvmspirvlib-15-dev
 # Força o sistema a usar o LLVM/Clang 15 recém instalado
 RUN ln -sf /usr/bin/clang-15 /usr/bin/clang && \
     ln -sf /usr/bin/clang++-15 /usr/bin/clang++ && \

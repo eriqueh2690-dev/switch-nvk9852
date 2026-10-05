@@ -43,8 +43,17 @@ jobs:
           bash /work/build-std-sysroot.sh || true
           echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
           mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
-          cp -f $(find /tmp/stdsr -name "libstd-*.rlib" -exec dirname {} \; | head -n 1)/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
-          cp -f $(find /tmp/stdsr -name "libstd-*.rmeta" -exec dirname {} \; | head -n 1)/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          
+          # Busca universal pela pasta secreta onde o cargo escondeu as bibliotecas!
+          CORE_PATH=$(find /work /tmp /root -name "libcore-*.rlib" -path "*/aarch64-switch-horizon/*" 2>/dev/null | head -n 1)
+          if [ -n "$CORE_PATH" ]; then
+            STD_DIR=$(dirname "$CORE_PATH")
+            echo "Bibliotecas do Rust encontradas em: $STD_DIR"
+            cp -f $STD_DIR/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
+            cp -f $STD_DIR/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          else
+            echo "ERRO FATAL: libcore-*.rlib não foi encontrado em lugar nenhum!"
+          fi
         '
         
     - name: Phase 2 - Cross-Compile Mesa and NAK
@@ -60,6 +69,9 @@ jobs:
           mkdir -p $RUSTLIB_DIR/aarch64-switch-horizon/lib
           cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          
+          # Lista para comprovar que as bibliotecas estão lá agora!
+          ls -la $RUSTLIB_DIR/aarch64-switch-horizon/lib/
           
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           

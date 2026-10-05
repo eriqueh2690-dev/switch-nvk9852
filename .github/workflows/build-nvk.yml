@@ -81,12 +81,14 @@ jobs:
           
           # BURLAR A FALTA DE LIBDL NO NINTENDO SWITCH
           echo "=== CRIANDO LIBDL FALSO PARA O SWITCH ==="
+          mkdir -p /opt/devkitpro/portlibs/switch/lib
           echo "void* dlopen(const char* filename, int flags) { return 0; }" > /tmp/dummy_dl.c
           echo "void* dlsym(void* handle, const char* symbol) { return 0; }" >> /tmp/dummy_dl.c
           echo "int dlclose(void* handle) { return -1; }" >> /tmp/dummy_dl.c
           echo "char* dlerror(void) { return \"No DL\"; }" >> /tmp/dummy_dl.c
           aarch64-none-elf-gcc -c /tmp/dummy_dl.c -o /tmp/dummy_dl.o
           aarch64-none-elf-ar rcs /opt/devkitpro/portlibs/switch/lib/libdl.a /tmp/dummy_dl.o
+          ls -la /opt/devkitpro/portlibs/switch/lib/libdl.a || echo "ERRO AO CRIAR LIBDL!"
           
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           

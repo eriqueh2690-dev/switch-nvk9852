@@ -35,7 +35,11 @@ RUN apt-get update && apt-get install -y \
     lld \
     lldb \
     wget \
-    sudo
+    sudo \
+    glslang-tools \
+    spirv-tools
+# Instala a versão correta do OpenCL C (libclc) dependendo do ano da imagem do DevkitPro
+RUN apt-get install -y libclc-15-dev || apt-get install -y libclc-14-dev || apt-get install -y libclc-16-dev || apt-get install -y libclc-dev
 RUN pip3 install meson mako --break-system-packages || pip3 install meson mako
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2026-09-15
 ENV PATH=/root/.cargo/bin:$PATH

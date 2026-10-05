@@ -54,6 +54,14 @@ jobs:
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
+          
+          echo "Iniciando compilação... (é normal dar um erro rápido aqui, nós vamos interceptar)"
+          ninja -C /work/mb || true
+          
+          echo "Injetando a permissão unsafe_extern_blocks nos arquivos gerados pelo Mesa..."
+          find /work/mb -name "lib.rs" -exec sed -i "1i #![allow(unstable_features)]\n#![feature(unsafe_extern_blocks)]" {} \;
+          
+          echo "Continuando a compilação curada..."
           ninja -C /work/mb
           
           echo "Converting thin archives to thick archives..."
@@ -62,7 +70,6 @@ jobs:
           find . -name "*.a" | while read -r a; do
             ARCHIVE_DIR=$(dirname "$a")
             ARCHIVE_NAME=$(basename "$a")
-            # Entra na pasta do arquivo .a, lê quais .o ele usa, e recria ele gordinho na output_libs
             (cd "$ARCHIVE_DIR" && aarch64-none-elf-ar -t "$ARCHIVE_NAME" | xargs aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME")
           done
         '

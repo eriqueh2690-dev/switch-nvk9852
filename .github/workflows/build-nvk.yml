@@ -54,13 +54,6 @@ jobs:
           export PATH=/work/native-prefix/bin:$PATH
           export BUILD=/work/mb
           
-          # SOLUÇÃO DEFINITIVA: Forçamos o Mesa a usar o bindgen 0.69 (compatível com o Rust de 2024)
-          # 1. Apagamos a instrução que manda o Mesa baixar o bindgen 0.70
-          rm -f /work/mesa-25/subprojects/bindgen.wrap
-          # 2. Modificamos o código do Meson para aceitar versões antigas do bindgen
-          find /work/mesa-25 -name "meson.build" -exec sed -i "s/>= 0.70.0/>= 0.60.0/g" {} +
-          find /work/mesa-25 -name "meson.build" -exec sed -i "s/>=0.70.0/>=0.60.0/g" {} +
-          
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           
           ninja -C /work/mb

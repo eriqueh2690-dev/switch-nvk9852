@@ -30,15 +30,20 @@ RUN apt-get update && apt-get install -y \
     libelf-dev \
     zlib1g-dev \
     libzstd-dev \
-    clang \
-    llvm \
-    lld \
-    lldb \
+    clang-15 \
+    llvm-15 \
+    llvm-15-dev \
+    lld-15 \
     wget \
     sudo \
     glslang-tools \
-    spirv-tools
-# Instala a versão correta do OpenCL C (libclc) dependendo do ano da imagem do DevkitPro
+    spirv-tools \
+    libudev-dev
+# Força o sistema a usar o LLVM/Clang 15 recém instalado
+RUN ln -sf /usr/bin/clang-15 /usr/bin/clang && \
+    ln -sf /usr/bin/clang++-15 /usr/bin/clang++ && \
+    ln -sf /usr/bin/llvm-config-15 /usr/bin/llvm-config && \
+    ln -sf /usr/bin/ld.lld-15 /usr/bin/ld.lld
 RUN apt-get install -y libclc-15-dev || apt-get install -y libclc-14-dev || apt-get install -y libclc-16-dev || apt-get install -y libclc-dev
 RUN pip3 install meson mako --break-system-packages || pip3 install meson mako
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain nightly-2026-09-15

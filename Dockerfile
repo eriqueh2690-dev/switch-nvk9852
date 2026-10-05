@@ -17,8 +17,11 @@ RUN python3 -m pip install --break-system-packages --no-cache-dir 'meson>=1.4' m
 ENV RUSTUP_HOME=/opt/rust/rustup CARGO_HOME=/opt/rust/cargo
 ENV PATH="/opt/rust/cargo/bin:${PATH}"
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | \
-        sh -s -- -y --default-toolchain nightly-2026-09-15 --profile minimal --component rust-src \
+        sh -s -- -y --default-toolchain nightly-2024-08-01 --profile minimal --component rust-src \
     && rustc --version && cargo --version
+# bindgen (C->Rust FFI for NAK) + cbindgen (Rust->C headers for NIL, the nouveau image-layout lib).
+RUN cargo install --locked bindgen-cli@0.69.4 cbindgen && bindgen --version && cbindgen --version
+
 
 # bindgen (C->Rust FFI for NAK) + cbindgen (Rust->C headers for NIL, the nouveau image-layout lib).
 RUN cargo install --locked bindgen-cli cbindgen && bindgen --version && cbindgen --version

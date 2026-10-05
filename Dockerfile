@@ -37,9 +37,11 @@ RUN apt-get update && apt-get install -y \
     wget \
     sudo
 RUN pip3 install meson mako
-RUN curl -L -O https://github.com/devkitPro/pacman/releases/download/v1.0.2/devkitpro-pacman.amd64.deb \
-    && dpkg -i devkitpro-pacman.amd64.deb \
-    && rm devkitpro-pacman.amd64.deb \
+# Aqui está a correção oficial: Usar o instalador do devkitPro em vez de baixar o deb fixo
+RUN wget https://apt.devkitpro.org/install-devkitpro-pacman \
+    && chmod +x ./install-devkitpro-pacman \
+    && ./install-devkitpro-pacman \
+    && rm ./install-devkitpro-pacman \
     && dkp-pacman -Sy --noconfirm switch-dev switch-mesa switch-libdrm
 ENV DEVKITPRO=/opt/devkitpro
 ENV DEVKITARM=/opt/devkitpro/devkitARM

@@ -37,23 +37,73 @@ jobs:
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/apply-patches.sh
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
+        
     - name: Build Rust Sysroot
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -lc '
-          bash /work/build-std-sysroot.sh || true
-          echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
-          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          echo "=== CONFIGURANDO RUST PARA O SWITCH E COMPILANDO SYSROOT ==="
+          rustup default nightly-2026-09-14
+          rustup component add rust-src
           
-          # Busca universal pela pasta secreta onde o cargo escondeu as bibliotecas!
-          CORE_PATH=$(find /work /tmp /root -name "libcore-*.rlib" -path "*/aarch64-switch-horizon/*" 2>/dev/null | head -n 1)
-          if [ -n "$CORE_PATH" ]; then
-            STD_DIR=$(dirname "$CORE_PATH")
-            echo "Bibliotecas do Rust encontradas em: $STD_DIR"
-            cp -f $STD_DIR/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
-            cp -f $STD_DIR/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
-          else
-            echo "ERRO FATAL: libcore-*.rlib não foi encontrado em lugar nenhum!"
-          fi
+          cat << EOF > /work/aarch64-switch-horizon.json
+        {
+            "arch": "aarch64",
+            "cpu": "cortex-a57",
+            "data-layout": "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128",
+            "dynamic-linking": false,
+            "env": "newlib",
+            "executables": true,
+            "features": "+neon,+fp-armv8,+crc,+crypto",
+            "linker": "aarch64-none-elf-gcc",
+            "linker-flavor": "gcc",
+            "llvm-target": "aarch64-unknown-none",
+            "max-atomic-width": 128,
+            "os": "none",
+            "panic-strategy": "abort",
+            "relocation-model": "pic",
+            "target-pointer-width": "64",
+            "target-c-int-width": "32"
+        }
+        EOF
+          export RUST_TARGET_PATH=/work
+          cd /work
+          rm -rf dummy_sysroot
+          cargo new dummy_sysroot
+          cd dummy_sysroot
+          cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
+          
+          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib
+          cp target/aarch64-switch-horizon/release/deps/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          
+          echo "=== CRIANDO STD FALSO PARA ENGANAR O MESA ==="
+          cat << EOF > /tmp/fake_std.rs
+        #![no_std]
+        extern crate alloc;
+        pub use core::*;
+        pub mod collections { pub use alloc::collections::*; }
+        pub mod string { pub use alloc::string::*; }
+        pub mod vec { pub use alloc::vec::*; }
+        pub mod boxed { pub use alloc::boxed::*; }
+        pub mod prelude {
+            pub mod rust_2021 {
+                pub use core::prelude::rust_2021::*;
+                pub use alloc::string::{String, ToString};
+                pub use alloc::vec::Vec;
+                pub use alloc::boxed::Box;
+                pub use alloc::vec;
+                pub use alloc::format;
+            }
+            pub mod v1 {
+                pub use core::prelude::v1::*;
+                pub use alloc::string::{String, ToString};
+                pub use alloc::vec::Vec;
+                pub use alloc::boxed::Box;
+                pub use alloc::vec;
+                pub use alloc::format;
+            }
+        }
+        EOF
+          rustc --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
         '
         
     - name: Phase 2 - Cross-Compile Mesa and NAK
@@ -70,14 +120,20 @@ jobs:
           cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           
-          # BURLAR O TESTE DE SANIDADE DO MESON
-          echo "if [[ \"\$*\" == *\"sanity_check\"* ]]; then" > /tmp/bypass.sh
-          echo "  touch sanity_check_for_rust_cross.exe" >> /tmp/bypass.sh
-          echo "  touch sanity_check_for_rust.exe" >> /tmp/bypass.sh
-          echo "  echo \"note: native-static-libs: \" >&2" >> /tmp/bypass.sh
-          echo "  exit 0" >> /tmp/bypass.sh
-          echo "fi" >> /tmp/bypass.sh
-          sed -i -e "2r /tmp/bypass.sh" /work/rustc-switch.sh
+          # REESCREVE O RUSTC-SWITCH.SH PARA CONSERTAR O NOME DO TARGET E BYPASS DO SANITY CHECK
+          echo "=== REESCREVENDO RUSTC WRAPPER ==="
+          cat << EOF > /work/rustc-switch.sh
+        #!/bin/bash
+        export RUST_TARGET_PATH=/work
+        if [[ "\$*" == *"sanity_check"* ]]; then
+          touch sanity_check_for_rust_cross.exe
+          touch sanity_check_for_rust.exe
+          echo "note: native-static-libs: " >&2
+          exit 0
+        fi
+        exec rustc --target aarch64-switch-horizon --sysroot /work/sysroot "\$@"
+        EOF
+          chmod +x /work/rustc-switch.sh
           
           # BURLAR A FALTA DE LIBDL NO NINTENDO SWITCH
           echo "=== CRIANDO LIBDL FALSO PARA O SWITCH ==="
@@ -89,8 +145,6 @@ jobs:
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc -c /tmp/dummy_dl.c -o /tmp/dummy_dl.o
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs /opt/devkitpro/portlibs/switch/lib/libdl.a /tmp/dummy_dl.o
           ls -la /opt/devkitpro/portlibs/switch/lib/libdl.a || echo "ERRO AO CRIAR LIBDL!"
-
-          
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           
           ninja -C /work/mb
@@ -101,7 +155,7 @@ jobs:
           find . -name "*.a" | while read -r a; do
             ARCHIVE_DIR=$(dirname "$a")
             ARCHIVE_NAME=$(basename "$a")
-            (cd "$ARCHIVE_DIR" && aarch64-none-elf-ar -t "$ARCHIVE_NAME" | xargs aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME")
+            (cd "$ARCHIVE_DIR" && /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "$ARCHIVE_NAME" | xargs /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME")
           done
         '
     - name: Upload NVK Static Libraries

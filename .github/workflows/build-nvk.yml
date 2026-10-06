@@ -92,7 +92,7 @@ jobs:
           find /work/dummy_sysroot -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
           
           echo "=== CRIANDO STD FALSO MELHORADO ==="
-          cat << '\''EOF'\'' > /tmp/fake_std.rs
+          cat << EOF > /tmp/fake_std.rs
         #![no_std]
         extern crate alloc;
         pub use core::*;
@@ -124,7 +124,9 @@ jobs:
             pub use core::fmt::*;
         }
         pub mod error {
-            pub trait Error: core::fmt::Debug + core::fmt::Display {}
+            pub trait Error: core::fmt::Debug + core::fmt::Display {
+                fn source(&self) -> Option<&(dyn Error)> { None }
+            }
         }
         pub mod io {
             use alloc::string::String;
@@ -143,7 +145,7 @@ jobs:
                 pub fn raw_os_error(&self) -> Option<i32> { None }
             }
             impl core::fmt::Display for Error {
-                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
                     write!(f, "IO Error")
                 }
             }
@@ -177,10 +179,10 @@ jobs:
         EOF
           rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
           
-          RUSTLIB_DIR=$(rustc --print sysroot)/lib/rustlib
-          mkdir -p $RUSTLIB_DIR/aarch64-switch-horizon/lib
-          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
-          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          RUSTLIB_DIR=\$(rustc --print sysroot)/lib/rustlib
+          mkdir -p \$RUSTLIB_DIR/aarch64-switch-horizon/lib
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib \$RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta \$RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           
           echo "=== REESCREVENDO RUSTC WRAPPER ==="
           cat << EOF > /work/rustc-switch.sh
@@ -207,9 +209,9 @@ jobs:
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc -c /tmp/dummy_dl.c -o /tmp/dummy_dl.o
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs /opt/devkitpro/portlibs/switch/lib/libdl.a /tmp/dummy_dl.o
           echo "=== ADAPTANDO MESA PARA BTREEMAP (SWITCH COMPATIBILITY) ==="
-          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Eq + Hash,/K: core::cmp::Ord,/g' {} +
-          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Eq + Hash/K: core::cmp::Ord/g' {} +
-          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Hash + Eq/K: core::cmp::Ord/g' {} +
+          find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash,/K: core::cmp::Ord,/g" {} +
+          find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash/K: core::cmp::Ord/g" {} +
+          find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Hash + Eq/K: core::cmp::Ord/g" {} +
           echo "=== CONFIGURANDO O MESA ==="
           cd /work/mesa-25
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
@@ -221,10 +223,10 @@ jobs:
           mkdir -p /work/output_libs
           cd /work/mb
           find . -name "*.a" | while read -r a; do
-            ARCHIVE_NAME=$(basename "$a")
-            echo "Processando $ARCHIVE_NAME..."
-            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "$a" | tr "\n" " " > /tmp/objects.txt
-            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em $ARCHIVE_NAME"
+            ARCHIVE_NAME=\$(basename "\$a")
+            echo "Processando \$ARCHIVE_NAME..."
+            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "\$a" | tr "\n" " " > /tmp/objects.txt
+            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/\$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em \$ARCHIVE_NAME"
           done
         '
         

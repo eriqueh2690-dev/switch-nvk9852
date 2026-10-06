@@ -310,12 +310,12 @@ jobs:
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash/K: core::cmp::Ord/g" {} +
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Hash + Eq/K: core::cmp::Ord/g" {} +
           
-          sed -i 's/pub struct Label {/#[derive(Ord, PartialOrd)] pub struct Label {/g' /work/mesa-25/src/nouveau/compiler/nak/ir.rs
-          sed -i 's/pub struct SSAValue {/#[derive(Ord, PartialOrd)] pub struct SSAValue {/g' /work/mesa-25/src/nouveau/compiler/nak/ir.rs
-          sed -i 's/pub struct SSARef {/#[derive(Ord, PartialOrd)] pub struct SSARef {/g' /work/mesa-25/src/nouveau/compiler/nak/ir.rs
-          sed -i 's/pub struct RegRef {/#[derive(Ord, PartialOrd)] pub struct RegRef {/g' /work/mesa-25/src/nouveau/compiler/nak/ir.rs
+          sed -i "s/pub struct Label {/#[derive(Ord, PartialOrd)] pub struct Label {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
+          sed -i "s/pub struct SSAValue {/#[derive(Ord, PartialOrd)] pub struct SSAValue {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
+          sed -i "s/pub struct SSARef {/#[derive(Ord, PartialOrd)] pub struct SSARef {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
+          sed -i "s/pub struct RegRef {/#[derive(Ord, PartialOrd)] pub struct RegRef {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
           
-          sed -i 's/impl<X: Copy + Hash + Eq> UnionFind<X> {/impl<X: Copy + Hash + Eq + core::cmp::Ord> UnionFind<X> {/g' /work/mesa-25/src/nouveau/compiler/nak/union_find.rs
+          sed -i "s/impl<X: Copy + Hash + Eq> UnionFind<X> {/impl<X: Copy + Hash + Eq + core::cmp::Ord> UnionFind<X> {/g" /work/mesa-25/src/nouveau/compiler/nak/union_find.rs
           echo "=== BAIXANDO LIBDRM PARA COMPATIBILIDADE ==="
           git clone --depth 1 https://gitlab.freedesktop.org/mesa/drm.git /tmp/libdrm
           cp /tmp/libdrm/xf86drm.h /work/compat/

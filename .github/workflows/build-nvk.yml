@@ -98,7 +98,6 @@ jobs:
         pub use core::*;
         pub mod collections {
             pub use alloc::collections::*;
-            // O TRUQUE MÁGICO: Disfarçar o BTreeMap de HashMap!
             pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>;
             pub type HashSet<T> = alloc::collections::BTreeSet<T>;
             pub mod hash_map {
@@ -125,9 +124,7 @@ jobs:
             pub use core::fmt::*;
         }
         pub mod error {
-            pub trait Error: core::fmt::Debug + core::fmt::Display {
-                fn source(&self) -> Option<&(dyn Error + '\''static)> { None }
-            }
+            pub trait Error: core::fmt::Debug + core::fmt::Display {}
         }
         pub mod io {
             use alloc::string::String;

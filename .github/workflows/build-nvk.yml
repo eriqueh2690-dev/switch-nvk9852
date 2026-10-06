@@ -69,7 +69,8 @@ jobs:
           export RUSTFLAGS="-Z unstable-options"
           cd /work
           rm -rf dummy_sysroot
-          cargo new dummy_sysroot
+          cargo new --lib dummy_sysroot
+          echo "#![no_std]" > dummy_sysroot/src/lib.rs
           cd dummy_sysroot
           cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
           

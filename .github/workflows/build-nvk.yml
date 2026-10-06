@@ -179,10 +179,10 @@ jobs:
         EOF
           rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
           
-          RUSTLIB_DIR=\$(rustc --print sysroot)/lib/rustlib
-          mkdir -p \$RUSTLIB_DIR/aarch64-switch-horizon/lib
-          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib \$RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
-          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta \$RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          RUSTLIB_DIR=$(rustc --print sysroot)/lib/rustlib
+          mkdir -p $RUSTLIB_DIR/aarch64-switch-horizon/lib
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rlib $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          cp -f /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/*.rmeta $RUSTLIB_DIR/aarch64-switch-horizon/lib/ 2>/dev/null || true
           
           echo "=== REESCREVENDO RUSTC WRAPPER ==="
           cat << EOF > /work/rustc-switch.sh
@@ -223,10 +223,10 @@ jobs:
           mkdir -p /work/output_libs
           cd /work/mb
           find . -name "*.a" | while read -r a; do
-            ARCHIVE_NAME=\$(basename "\$a")
-            echo "Processando \$ARCHIVE_NAME..."
-            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "\$a" | tr "\n" " " > /tmp/objects.txt
-            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/\$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em \$ARCHIVE_NAME"
+            ARCHIVE_NAME=$(basename "$a")
+            echo "Processando $ARCHIVE_NAME..."
+            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "$a" | tr "\n" " " > /tmp/objects.txt
+            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em $ARCHIVE_NAME"
           done
         '
         

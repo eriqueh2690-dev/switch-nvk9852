@@ -66,6 +66,7 @@ jobs:
         }
         EOF
           export RUST_TARGET_PATH=/work
+          export RUSTFLAGS="-Z unstable-options"
           cd /work
           rm -rf dummy_sysroot
           cargo new dummy_sysroot
@@ -103,7 +104,7 @@ jobs:
             }
         }
         EOF
-          rustc --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
+          rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
         '
         
     - name: Phase 2 - Cross-Compile Mesa and NAK
@@ -131,7 +132,7 @@ jobs:
           echo "note: native-static-libs: " >&2
           exit 0
         fi
-        exec rustc --target aarch64-switch-horizon --sysroot /work/sysroot "\$@"
+        exec rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot "\$@"
         EOF
           chmod +x /work/rustc-switch.sh
           

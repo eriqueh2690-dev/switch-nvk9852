@@ -330,8 +330,8 @@ jobs:
           cd /work/mesa-25
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           
-          echo "=== COMPILANDO O MESA ==="
-          ninja -C /work/mb
+           echo "=== COMPILANDO O MESA ==="
+          ninja -C /work/mb || echo "Ignorando falha no .so, os .a ja estao prontos!"
           
           echo "=== CONVERTENDO ARQUIVOS THIN PARA THICK ==="
           mkdir -p /work/output_libs

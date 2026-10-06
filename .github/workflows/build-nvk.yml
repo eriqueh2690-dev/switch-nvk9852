@@ -305,7 +305,7 @@ jobs:
           echo "char* dlerror(void) { return \"No DL\"; }" >> /tmp/dummy_dl.c
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc -c /tmp/dummy_dl.c -o /tmp/dummy_dl.o
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs /opt/devkitpro/portlibs/switch/lib/libdl.a /tmp/dummy_dl.o
-          echo "=== ADAPTANDO MESA PARA BTREEMAP (SWITCH COMPATIBILITY) ==="
+          echo "=== ADAPTANDO MESA PARA BTREEMAP E METODOS FALTANTES ==="
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash,/K: core::cmp::Ord,/g" {} +
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash/K: core::cmp::Ord/g" {} +
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Hash + Eq/K: core::cmp::Ord/g" {} +
@@ -314,8 +314,11 @@ jobs:
           sed -i "s/pub struct SSAValue {/#[derive(Ord, PartialOrd)] pub struct SSAValue {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
           sed -i "s/pub struct SSARef {/#[derive(Ord, PartialOrd)] pub struct SSARef {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
           sed -i "s/pub struct RegRef {/#[derive(Ord, PartialOrd)] pub struct RegRef {/g" /work/mesa-25/src/nouveau/compiler/nak/ir.rs
-          
           sed -i "s/impl<X: Copy + Hash + Eq> UnionFind<X> {/impl<X: Copy + Hash + Eq + core::cmp::Ord> UnionFind<X> {/g" /work/mesa-25/src/nouveau/compiler/nak/union_find.rs
+          # Patches para substituir o .drain() que não existe em BTreeSet/BTreeMap
+          sed -i "s/self.evicted.drain()/core::mem::take(\&mut self.evicted).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/assign_regs.rs
+          sed -i "s/killed.drain()/core::mem::take(\&mut killed).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/liveness.rs
+          sed -i "s/live.drain()/core::mem::take(\&mut live).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/spill_values.rs
           echo "=== BAIXANDO LIBDRM PARA COMPATIBILIDADE ==="
           git clone --depth 1 https://gitlab.freedesktop.org/mesa/drm.git /tmp/libdrm
           cp /tmp/libdrm/xf86drm.h /work/compat/

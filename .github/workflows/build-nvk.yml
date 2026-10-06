@@ -92,7 +92,7 @@ jobs:
           find /work/dummy_sysroot -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
           
           echo "=== CRIANDO STD FALSO MELHORADO ==="
-          cat << EOF > /tmp/fake_std.rs
+          cat << '\''EOF'\'' > /tmp/fake_std.rs
         #![no_std]
         extern crate alloc;
         pub use core::*;
@@ -123,6 +123,41 @@ jobs:
         }
         pub mod fmt {
             pub use core::fmt::*;
+        }
+        pub mod error {
+            pub trait Error: core::fmt::Debug + core::fmt::Display {
+                fn source(&self) -> Option<&(dyn Error + '\''static)> { None }
+            }
+        }
+        pub mod io {
+            use alloc::string::String;
+            use alloc::vec::Vec;
+            #[derive(Debug)]
+            pub struct Error {
+                message: String,
+            }
+            impl Error {
+                pub fn last_os_error() -> Self { 
+                    Error { message: String::new() } 
+                }
+                pub fn new<E>(kind: ErrorKind, _error: E) -> Self { 
+                    Error { message: String::new() } 
+                }
+                pub fn raw_os_error(&self) -> Option<i32> { None }
+            }
+            impl core::fmt::Display for Error {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                    write!(f, "IO Error")
+                }
+            }
+            impl crate::error::Error for Error {}
+            #[derive(Debug, PartialEq, Eq)]
+            pub enum ErrorKind {
+                InvalidInput,
+                NotFound,
+                Other,
+            }
+            pub type Result<T> = core::result::Result<T, Error>;
         }
         pub mod prelude {
             pub mod rust_2021 {
@@ -174,6 +209,10 @@ jobs:
           echo "char* dlerror(void) { return \"No DL\"; }" >> /tmp/dummy_dl.c
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-gcc -c /tmp/dummy_dl.c -o /tmp/dummy_dl.o
           /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs /opt/devkitpro/portlibs/switch/lib/libdl.a /tmp/dummy_dl.o
+          echo "=== ADAPTANDO MESA PARA BTREEMAP (SWITCH COMPATIBILITY) ==="
+          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Eq + Hash,/K: core::cmp::Ord,/g' {} +
+          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Eq + Hash/K: core::cmp::Ord/g' {} +
+          find /work/mesa-25/src -name "*.rs" -exec sed -i 's/K: Hash + Eq/K: core::cmp::Ord/g' {} +
           echo "=== CONFIGURANDO O MESA ==="
           cd /work/mesa-25
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }

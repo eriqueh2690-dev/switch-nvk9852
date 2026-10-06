@@ -319,6 +319,8 @@ jobs:
           sed -i "s/self.evicted.drain()/core::mem::take(\&mut self.evicted).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/assign_regs.rs
           sed -i "s/killed.drain()/core::mem::take(\&mut killed).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/liveness.rs
           sed -i "s/live.drain()/core::mem::take(\&mut live).into_iter()/g" /work/mesa-25/src/nouveau/compiler/nak/spill_values.rs
+          # Patch para corrigir o f32::round() ausente no no_std
+          sed -i "s/scaled.clamp(0.0, scaled_max).round() as u32/(scaled.clamp(0.0, scaled_max) + 0.5) as u32/g" /work/mesa-25/src/nouveau/nil/tic.rs
           echo "=== BAIXANDO LIBDRM PARA COMPATIBILIDADE ==="
           git clone --depth 1 https://gitlab.freedesktop.org/mesa/drm.git /tmp/libdrm
           cp /tmp/libdrm/xf86drm.h /work/compat/

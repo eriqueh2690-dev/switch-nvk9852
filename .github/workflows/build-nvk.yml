@@ -97,21 +97,40 @@ jobs:
         extern crate alloc;
         
         #[macro_export]
-        macro_rules! println { (\$(\$arg:tt)*) => {}; }
+        macro_rules! println { (\$(\$arg:tt)*) => { () }; }
         #[macro_export]
-        macro_rules! eprintln { (\$(\$arg:tt)*) => {}; }
+        macro_rules! eprintln { (\$(\$arg:tt)*) => { () }; }
         #[macro_export]
-        macro_rules! print { (\$(\$arg:tt)*) => {}; }
+        macro_rules! print { (\$(\$arg:tt)*) => { () }; }
         #[macro_export]
-        macro_rules! eprint { (\$(\$arg:tt)*) => {}; }
+        macro_rules! eprint { (\$(\$arg:tt)*) => { () }; }
         #[macro_export]
         macro_rules! dbg {
-            () => {};
+            () => { () };
             (\$val:expr \$(,)?) => { \$val };
             (\$(\$val:expr),+ \$(,)?) => { (\$(\$val),+) };
         }
         
         pub use core::*;
+        
+        use core::alloc::{GlobalAlloc, Layout};
+        pub struct CAlloc;
+        unsafe impl GlobalAlloc for CAlloc {
+            unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+                extern "C" { fn memalign(align: usize, size: usize) -> *mut u8; }
+                memalign(layout.align(), layout.size())
+            }
+            unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+                extern "C" { fn free(ptr: *mut u8); }
+                free(ptr)
+            }
+        }
+        #[global_allocator]
+        static ALLOCATOR: CAlloc = CAlloc;
+        
+        #[panic_handler]
+        fn panic(_info: &core::panic::PanicInfo) -> ! { loop {} }
+        
         pub mod collections {
             pub use alloc::collections::*;
             pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>;
@@ -121,6 +140,26 @@ jobs:
             }
             pub mod hash_set {
                 pub use alloc::collections::btree_set::*;
+            }
+        }
+        pub mod env {
+            use alloc::string::String;
+            pub fn var(key: &str) -> core::result::Result<String, VarError> {
+                Err(VarError::NotPresent)
+            }
+            #[derive(Debug)]
+            pub enum VarError { NotPresent, NotUnicode }
+            impl core::fmt::Display for VarError {
+                fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+                    write!(f, "VarError")
+                }
+            }
+            impl crate::error::Error for VarError {}
+        }
+        pub mod panic {
+            pub use core::panic::*;
+            pub fn catch_unwind<F: FnOnce() -> R + core::panic::UnwindSafe, R>(f: F) -> core::result::Result<R, alloc::boxed::Box<dyn core::any::Any + Send>> {
+                Ok(f())
             }
         }
         pub mod string { pub use alloc::string::*; }

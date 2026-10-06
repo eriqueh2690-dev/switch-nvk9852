@@ -212,6 +212,11 @@ jobs:
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash,/K: core::cmp::Ord,/g" {} +
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Eq + Hash/K: core::cmp::Ord/g" {} +
           find /work/mesa-25/src -name "*.rs" -exec sed -i "s/K: Hash + Eq/K: core::cmp::Ord/g" {} +
+          echo "=== BAIXANDO LIBDRM PARA COMPATIBILIDADE ==="
+          git clone --depth 1 https://gitlab.freedesktop.org/mesa/drm.git /tmp/libdrm
+          cp /tmp/libdrm/xf86drm.h /work/compat/
+          cp /tmp/libdrm/xf86drmMode.h /work/compat/
+          cp -r /tmp/libdrm/include/drm/* /work/compat/
           echo "=== CONFIGURANDO O MESA ==="
           cd /work/mesa-25
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }

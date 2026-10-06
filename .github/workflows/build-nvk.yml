@@ -61,8 +61,8 @@ jobs:
             "os": "none",
             "panic-strategy": "abort",
             "relocation-model": "pic",
-            "target-pointer-width": "64",
-            "target-c-int-width": "32"
+            "target-pointer-width": 64,
+            "target-c-int-width": 32
         }
         EOF
           export RUST_TARGET_PATH=/work

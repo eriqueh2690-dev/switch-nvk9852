@@ -75,26 +75,38 @@ jobs:
           export RUST_TARGET_PATH=/work
           export RUSTFLAGS="-Z unstable-options"
           
-          echo "=== CONSTRUINDO STD FALSO MELHORADO ==="
+          echo "=== COMPILANDO CORE E ALLOC ==="
           cd /work
-          rm -rf fake_std
-          cargo new --lib fake_std
-          cat << EOF > fake_std/Cargo.toml
-        [package]
-        name = "std"
-        version = "0.1.0"
-        edition = "2021"
-        [dependencies]
-        hashbrown = { version = "0.14", default-features = false, features = ["alloc"] }
+          rm -rf dummy_sysroot
+          cargo new --lib dummy_sysroot
+          cat << EOF > dummy_sysroot/src/lib.rs
+        #![no_std]
+        extern crate alloc;
         EOF
-          cat << EOF > fake_std/src/lib.rs
+          cd dummy_sysroot
+          cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
+          
+          echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
+          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          find /work/dummy_sysroot -name "*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
+          find /work/dummy_sysroot -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
+          
+          echo "=== CRIANDO STD FALSO MELHORADO ==="
+          cat << EOF > /tmp/fake_std.rs
         #![no_std]
         extern crate alloc;
         pub use core::*;
         pub mod collections {
             pub use alloc::collections::*;
-            pub use hashbrown::HashMap;
-            pub use hashbrown::HashSet;
+            // O TRUQUE MÁGICO: Disfarçar o BTreeMap de HashMap!
+            pub type HashMap<K, V> = alloc::collections::BTreeMap<K, V>;
+            pub type HashSet<T> = alloc::collections::BTreeSet<T>;
+            pub mod hash_map {
+                pub use alloc::collections::btree_map::*;
+            }
+            pub mod hash_set {
+                pub use alloc::collections::btree_set::*;
+            }
         }
         pub mod string { pub use alloc::string::*; }
         pub mod vec { pub use alloc::vec::*; }
@@ -131,17 +143,7 @@ jobs:
             }
         }
         EOF
-          
-          cd fake_std
-          cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
-          
-          echo "=== MONTANDO SYSROOT DO SWITCH ==="
-          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
-          
-          # Copia todas as bibliotecas base e dependências (como o hashbrown) para o sysroot
-          find /work/fake_std/target/aarch64-switch-horizon/release/deps -name "*.rlib" ! -name "libstd-*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
-          # Copia e renomeia o nosso std falso perfeitinho
-          find /work/fake_std/target/aarch64-switch-horizon/release/deps -name "libstd-*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib \;
+          rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
           
           RUSTLIB_DIR=$(rustc --print sysroot)/lib/rustlib
           mkdir -p $RUSTLIB_DIR/aarch64-switch-horizon/lib

@@ -40,7 +40,7 @@ jobs:
         
     - name: Build Rust Sysroot
       run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -lc '
+        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -elc '
           echo "=== CONFIGURANDO RUST PARA O SWITCH E COMPILANDO SYSROOT ==="
           rustup default nightly-2026-09-14
           rustup component add rust-src
@@ -70,12 +70,26 @@ jobs:
           cd /work
           rm -rf dummy_sysroot
           cargo new --lib dummy_sysroot
-          echo "#![no_std]" > dummy_sysroot/src/lib.rs
+          cat << EOF > dummy_sysroot/src/lib.rs
+        #![no_std]
+        extern crate alloc;
+        EOF
           cd dummy_sysroot
           cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
           
-          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib
-          cp target/aarch64-switch-horizon/release/deps/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
+          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          
+          CORE_PATH=$(find /work /tmp /root -name "libcore-*.rlib" -path "*/aarch64-switch-horizon/*" 2>/dev/null | head -n 1)
+          if [ -n "$CORE_PATH" ]; then
+            STD_DIR=$(dirname "$CORE_PATH")
+            echo "Bibliotecas do Rust encontradas em: $STD_DIR"
+            cp -f $STD_DIR/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
+            cp -f $STD_DIR/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ 2>/dev/null || true
+          else
+            echo "ERRO FATAL: libcore-*.rlib não foi encontrado em lugar nenhum!"
+            exit 1
+          fi
           
           echo "=== CRIANDO STD FALSO PARA ENGANAR O MESA ==="
           cat << EOF > /tmp/fake_std.rs

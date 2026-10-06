@@ -77,14 +77,14 @@ jobs:
           cd dummy_sysroot
           cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
           
-          echo "=== ARQUIVOS COMPILADOS PELO CARGO ==="
-          ls -la /work/dummy_sysroot/target/aarch64-switch-horizon/release/deps/
-          
           echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
           mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
           
-          cp /work/dummy_sysroot/target/aarch64-switch-horizon/release/deps/*.rlib /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
-          cp /work/dummy_sysroot/target/aarch64-switch-horizon/release/deps/*.rmeta /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
+          echo "Procurando arquivos compilados:"
+          find /work/dummy_sysroot -name "*.rlib"
+          
+          find /work/dummy_sysroot -name "*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
+          find /work/dummy_sysroot -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
           
           echo "=== CRIANDO STD FALSO PARA ENGANAR O MESA ==="
           cat << EOF > /tmp/fake_std.rs

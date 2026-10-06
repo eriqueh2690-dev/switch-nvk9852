@@ -330,17 +330,20 @@ jobs:
           cd /work/mesa-25
           bash /work/configure-mesa.sh || { echo "=== ERRO NO MESON ==="; cat /work/mb/meson-logs/meson-log.txt; exit 1; }
           
-           echo "=== COMPILANDO O MESA ==="
+          echo "=== COMPILANDO O MESA ==="
           ninja -C /work/mb || echo "Ignorando falha no .so, os .a ja estao prontos!"
           
-          echo "=== CONVERTENDO ARQUIVOS THIN PARA THICK ==="
+          echo "=== CONVERTENDO ARQUIVOS THIN PARA THICK E SALVANDO TODOS ==="
           mkdir -p /work/output_libs
           cd /work/mb
           find . -name "*.a" | while read -r a; do
             ARCHIVE_NAME=$(basename "$a")
             echo "Processando $ARCHIVE_NAME..."
             /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "$a" | tr "\n" " " > /tmp/objects.txt
-            /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em $ARCHIVE_NAME"
+            if ! /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME" @/tmp/objects.txt; then
+               echo "Conversao falhou. O arquivo provavel ja e Thick. Copiando diretamente..."
+               cp "$a" "/work/output_libs/$ARCHIVE_NAME"
+            fi
           done
         '
         

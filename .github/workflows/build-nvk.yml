@@ -1,128 +1,14 @@
-name: Build NVK for Switch
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout switch-nvk repo
-      uses: actions/checkout@v3
-    - name: Download and extract Mesa 25.0.7
-      run: |
-        curl -L -O https://archive.mesa3d.org/mesa-25.0.7.tar.xz
-        tar xf mesa-25.0.7.tar.xz
-        mv mesa-25.0.7 mesa-25
-        
-    - name: Fix Execute Permissions and Line Endings
-      run: |
-        find . -name "*.sh" -exec sed -i 's/\r$//' {} +
-        find . -name "*.sh" -exec chmod +x {} \;
-        
-    - name: Build Docker Image
-      run: |
-        docker build -t switch-nvk-build .
-        
-    - name: Phase 1 - Build Native Tools (Unpatched)
+ - name: Phase 2 - Cross-Compile Mesa and NAK
       run: |
         docker run --rm -v "${{ github.workspace }}:/work" -w /work/mesa-25 switch-nvk-build bash -lc '
           export NATIVE_PREFIX=/work/native-prefix
           export PATH=/work/native-prefix/bin:$PATH
+          export PATH="$HOME/.cargo/bin:$PATH"
           export BUILD=/work/mb
-          bash /work/build-native-tools.sh
-        '
-    - name: Apply Switch Patches
-      run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/apply-patches.sh
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash /work/winsys/wsi/apply-wsi-switch.sh
-        
-    - name: Build Rust Sysroot
-      run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work switch-nvk-build bash -elc '
-          echo "=== CONFIGURANDO RUST PARA O SWITCH E COMPILANDO SYSROOT ==="
+          
+          # ATIVANDO A MESMA VERSÃO DO RUST DA FASE 1!
+          echo "=== CONFIGURANDO RUST NA FASE 2 ==="
           rustup default nightly-2026-09-14
-          rustup component add rust-src
-          
-          cat << EOF > /work/aarch64-switch-horizon.json
-        {
-            "arch": "aarch64",
-            "cpu": "cortex-a57",
-            "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128-Fn32",
-            "dynamic-linking": false,
-            "env": "newlib",
-            "executables": true,
-            "features": "+neon,+fp-armv8,+crc,+crypto",
-            "linker": "aarch64-none-elf-gcc",
-            "linker-flavor": "gcc",
-            "llvm-target": "aarch64-unknown-none",
-            "max-atomic-width": 128,
-            "os": "none",
-            "panic-strategy": "abort",
-            "relocation-model": "pic",
-            "target-pointer-width": 64,
-            "target-c-int-width": 32
-        }
-        EOF
-          export RUST_TARGET_PATH=/work
-          export RUSTFLAGS="-Z unstable-options"
-          cd /work
-          rm -rf dummy_sysroot
-          cargo new --lib dummy_sysroot
-          cat << EOF > dummy_sysroot/src/lib.rs
-        #![no_std]
-        extern crate alloc;
-        EOF
-          cd dummy_sysroot
-          cargo build --target aarch64-switch-horizon -Z build-std=core,alloc,compiler_builtins --release
-          
-          echo "=== SALVANDO O SYSROOT DO SWITCH NA PASTA WORK ==="
-          mkdir -p /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/
-          
-          echo "Procurando arquivos compilados:"
-          find /work/dummy_sysroot -name "*.rlib"
-          
-          find /work/dummy_sysroot -name "*.rlib" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
-          find /work/dummy_sysroot -name "*.rmeta" -exec cp -f {} /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/ \;
-          
-          echo "=== CRIANDO STD FALSO PARA ENGANAR O MESA ==="
-          cat << EOF > /tmp/fake_std.rs
-        #![no_std]
-        extern crate alloc;
-        pub use core::*;
-        pub mod collections { pub use alloc::collections::*; }
-        pub mod string { pub use alloc::string::*; }
-        pub mod vec { pub use alloc::vec::*; }
-        pub mod boxed { pub use alloc::boxed::*; }
-        pub mod prelude {
-            pub mod rust_2021 {
-                pub use core::prelude::rust_2021::*;
-                pub use alloc::string::{String, ToString};
-                pub use alloc::vec::Vec;
-                pub use alloc::boxed::Box;
-                pub use alloc::vec;
-                pub use alloc::format;
-            }
-            pub mod v1 {
-                pub use core::prelude::v1::*;
-                pub use alloc::string::{String, ToString};
-                pub use alloc::vec::Vec;
-                pub use alloc::boxed::Box;
-                pub use alloc::vec;
-                pub use alloc::format;
-            }
-        }
-        EOF
-          rustc -Z unstable-options --target aarch64-switch-horizon --sysroot /work/sysroot --crate-type rlib --crate-name std /tmp/fake_std.rs -o /work/sysroot/lib/rustlib/aarch64-switch-horizon/lib/libstd.rlib
-        '
-        
-    - name: Phase 2 - Cross-Compile Mesa and NAK
-      run: |
-        docker run --rm -v "${{ github.workspace }}:/work" -w /work/mesa-25 switch-nvk-build bash -lc '
-          export NATIVE_PREFIX=/work/native-prefix
-          export PATH=/work/native-prefix/bin:$PATH
-          export BUILD=/work/mb
           
           # Restaura o sysroot salvo na Fase 1 para dentro do compilador global (rustup)
           echo "=== RESTAURANDO SYSROOT DO SWITCH PARA O RUSTC ==="
@@ -164,16 +50,8 @@ jobs:
           cd /work/mb
           find . -name "*.a" | while read -r a; do
             ARCHIVE_NAME=$(basename "$a")
-            # Agora estamos na pasta /work/mb, então os caminhos internos do thin archive vão bater certinho!
             echo "Processando $ARCHIVE_NAME..."
             /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar -t "$a" | tr "\n" " " > /tmp/objects.txt
             /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar rcs "/work/output_libs/$ARCHIVE_NAME" @/tmp/objects.txt || echo "Falhou em $ARCHIVE_NAME"
           done
         '
-        
-    - name: Upload NVK Static Libraries
-      uses: actions/upload-artifact@v4
-      with:
-        name: switch-nvk-libs
-        path: |
-          output_libs/*.a
